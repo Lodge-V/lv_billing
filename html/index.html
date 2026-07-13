@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Rechnungen</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<div id="app" class="hidden">
+  <div class="invoice-window">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">₡</div>
+      </div>
+
+      <nav class="nav-rail">
+        <button class="nav-btn active" data-view="dashboard" title="Übersicht"><span class="nav-icon">▤</span></button>
+        <button class="nav-btn" data-view="sent" title="Gesendet"><span class="nav-icon">↗</span></button>
+        <button class="nav-btn" data-view="new" title="Neue Rechnung"><span class="nav-icon">＋</span></button>
+        <button class="nav-btn hidden-view" data-view="group" id="navGroup" title="Gruppenrechnung"><span class="nav-icon">👥</span></button>
+        <button class="nav-btn" data-view="reference" title="Referenz bezahlen"><span class="nav-icon">▦</span></button>
+        <button class="nav-btn hidden-view" data-view="inspect" id="navInspect" title="Spieler prüfen"><span class="nav-icon">◎</span></button>
+        <button class="nav-btn hidden-view" data-view="team" id="navTeam" title="Team-Dashboard"><span class="nav-icon">🏆</span></button>
+        <button class="nav-btn hidden-view" data-view="city" id="navCity" title="Stadt-Rechnungen"><span class="nav-icon">⌘</span></button>
+      </nav>
+
+      <button class="nav-btn close-btn" id="closeBtn" title="Schließen"><span class="nav-icon">✕</span></button>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+      <!-- Dashboard -->
+      <section class="view active" id="view-dashboard">
+        <div class="view-header">
+          <div>
+            <h1>Übersicht</h1>
+            <p class="subtitle">Deine erhaltenen Rechnungen</p>
+          </div>
+          <button class="btn-primary" id="payAllBtn">Alle bezahlen</button>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-card">
+            <span class="stat-label">Offen</span>
+            <span class="stat-value" id="statOpenCount">0</span>
+          </div>
+          <div class="stat-card accent">
+            <span class="stat-label">Offene Summe</span>
+            <span class="stat-value" id="statOpenSum">0$</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Bereits bezahlt</span>
+            <span class="stat-value" id="statPaidSum">0$</span>
+          </div>
+        </div>
+
+        <div class="filter-bar" data-scope="received">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="receivedList" class="invoice-list"></div>
+      </section>
+
+      <!-- Gesendet -->
+      <section class="view" id="view-sent">
+        <div class="view-header">
+          <div>
+            <h1>Gesendet</h1>
+            <p class="subtitle">Von dir ausgestellte Rechnungen</p>
+          </div>
+        </div>
+
+        <div class="filter-bar" data-scope="sent">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="sentList" class="invoice-list"></div>
+      </section>
+
+      <!-- Neue Rechnung -->
+      <section class="view" id="view-new">
+        <div class="view-header">
+          <div>
+            <h1>Neue Rechnung</h1>
+            <p class="subtitle">An einen Online-Spieler ausstellen</p>
+          </div>
+        </div>
+
+        <div class="type-toggle" id="typeToggle">
+          <button class="toggle-btn active" data-type="personal">Persönlich</button>
+          <button class="toggle-btn hidden-view" data-type="society" id="toggleSociety">Gesellschaft</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Spieler</label>
+            <select id="targetSelect"></select>
+          </div>
+        </div>
+
+        <div class="items-section">
+          <div class="items-header">
+            <label>Positionen</label>
+            <div class="items-header-actions">
+              <select class="hidden-view" id="presetAddSelect">
+                <option value="">Vorlage hinzufügen...</option>
+              </select>
+              <button class="btn-secondary small" id="addItemBtn">+ Position</button>
+            </div>
+          </div>
+          <div id="itemsContainer"></div>
+          <div class="items-total">
+            <span>Gesamtsumme</span>
+            <span id="itemsTotal">0$</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Notiz (optional)</label>
+            <textarea id="notesInput" placeholder="Zusätzliche Informationen..."></textarea>
+          </div>
+        </div>
+
+        <div class="installment-box hidden-view" id="installmentBox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="installmentToggle">
+            <span>Als Ratenzahlung anbieten</span>
+          </label>
+          <div class="installment-parts hidden-view" id="installmentPartsField">
+            <label>Anzahl Raten</label>
+            <select id="installmentPartsSelect"></select>
+          </div>
+        </div>
+
+        <button class="btn-primary full" id="sendInvoiceBtn">Rechnung senden</button>
+      </section>
+
+      <!-- Gruppenrechnung -->
+      <section class="view" id="view-group">
+        <div class="view-header">
+          <div>
+            <h1>Gruppenrechnung</h1>
+            <p class="subtitle">Betrag gleichmäßig auf mehrere Spieler aufteilen</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field"><label>Grund</label><input type="text" id="groupItemInput" placeholder="z.B. Restaurantrechnung"></div>
+          <div class="form-field"><label>Gesamtbetrag ($)</label><input type="number" id="groupAmountInput" min="1" placeholder="z.B. 1200"></div>
+          <div class="form-field span-2"><label>Notiz (optional)</label><textarea id="groupNotesInput" placeholder="Zusätzliche Informationen..."></textarea></div>
+        </div>
+
+        <label class="section-label">Beteiligte Spieler</label>
+        <div id="groupPlayerList" class="group-player-list"></div>
+
+        <div class="items-total">
+          <span id="groupShareLabel">Anteil pro Person</span>
+          <span id="groupShareValue">0$</span>
+        </div>
+
+        <button class="btn-primary full" id="sendGroupBtn">Gruppenrechnung senden</button>
+      </section>
+
+      <!-- Referenz bezahlen -->
+      <section class="view" id="view-reference">
+        <div class="view-header">
+          <div>
+            <h1>Referenz bezahlen</h1>
+            <p class="subtitle">Begleiche die Rechnung eines anderen Spielers per Code</p>
+          </div>
+        </div>
+
+        <div class="reference-box">
+          <div class="ticket-stub">
+            <div class="ticket-notch left"></div>
+            <div class="ticket-notch right"></div>
+            <span class="ticket-label">REF-CODE</span>
+            <input type="text" id="refCodeInput" maxlength="6" placeholder="XXXXXX">
+          </div>
+          <button class="btn-primary" id="payReferenceBtn">Bezahlen</button>
+        </div>
+      </section>
+
+      <!-- Spieler prüfen -->
+      <section class="view" id="view-inspect">
+        <div class="view-header">
+          <div>
+            <h1>Spieler prüfen</h1>
+            <p class="subtitle">Offene Rechnungen eines Spielers einsehen</p>
+          </div>
+        </div>
+
+        <div class="inline-search">
+          <select id="inspectTargetSelect"></select>
+          <button class="btn-primary" id="inspectBtn">Prüfen</button>
+        </div>
+
+        <div id="inspectResult" class="inspect-result"></div>
+      </section>
+
+      <!-- Team-Dashboard / Leaderboard -->
+      <section class="view" id="view-team">
+        <div class="view-header">
+          <div>
+            <h1>Team-Dashboard</h1>
+            <p class="subtitle" id="teamSubtitle">Umsatz & Anzahl Rechnungen je Mitarbeiter</p>
+          </div>
+          <button class="btn-secondary" id="refreshTeamBtn">Aktualisieren</button>
+        </div>
+
+        <div class="stat-row" id="teamStatRow">
+          <div class="stat-card">
+            <span class="stat-label">Offene Rechnungen (Team)</span>
+            <span class="stat-value" id="teamOpenCount">0</span>
+          </div>
+        </div>
+
+        <div id="leaderboardList" class="leaderboard-list"></div>
+      </section>
+
+      <!-- Stadt-Rechnungen -->
+      <section class="view" id="view-city">
+        <div class="view-header">
+          <div>
+            <h1>Stadt-Rechnungen</h1>
+            <p class="subtitle">Alle Rechnungen server-weit verwalten</p>
+          </div>
+          <button class="btn-secondary" id="refreshCityBtn">Aktualisieren</button>
+        </div>
+
+        <div class="filter-bar" data-scope="city">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="cityList" class="invoice-list city"></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
