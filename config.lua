@@ -5,7 +5,7 @@ Config = {}
 -------------------------------------------------------
 
 Config.Command      = 'rechnungen'   -- öffnet die NUI
-Config.Key           = 'F7'           -- Standard-Keybind
+Config.Key           = 'F6'           -- Standard-Keybind
 Config.PaymentAccount = 'bank'        -- 'bank' oder 'money' (Bargeld)
 
 -- Grenzen für persönliche Rechnungen
@@ -35,7 +35,7 @@ Config.AutoPay = {
 -------------------------------------------------------
 
 Config.Societies = {
-    lspd = {
+    police = {
         label = 'Los Santos Police Department',
         feePercent = 10,
         authorCommissionPercent = 5,
@@ -47,7 +47,7 @@ Config.Societies = {
             { label = 'Waffenbesitz ohne Lizenz', price = 2500 },
         }
     },
-    somh = {
+    ambulance = {
         label = 'Los Santos EMS',
         feePercent = 0,
         authorCommissionPercent = 10,
@@ -57,7 +57,7 @@ Config.Societies = {
             { label = 'Operation',        price = 3500 },
         }
     },
-    redline = {
+    mechanic = {
         label = 'Bennys Werkstatt',
         feePercent = 0,
         authorCommissionPercent = 15,
@@ -74,10 +74,10 @@ Config.Societies = {
 -------------------------------------------------------
 
 -- Jobs, die "Spieler prüfen" (offene Rechnungen eines Ziels einsehen) nutzen dürfen
-Config.InspectJobs = { 'lspd', 'team' }
+Config.InspectJobs = { 'police', 'ambulance' }
 
 -- Jobs, die das Verwaltungsmenü "Stadt-Rechnungen" (alle Rechnungen server-weit) nutzen dürfen
-Config.ManageJobs = { 'team' }
+Config.ManageJobs = { 'police' }
 
 -- Zusätzlich: ESX-Ace-Permission, die IMMER Zugriff auf "Stadt-Rechnungen" hat (Admin-Override)
 Config.ManageAcePermission = 'command'
@@ -88,7 +88,7 @@ Config.ManageAcePermission = 'command'
 
 Config.Installments = {
     enabled = true,
-    minAmountForInstallments = 10000, -- ab diesem Betrag darf in Raten gezahlt werden
+    minAmountForInstallments = 1000, -- ab diesem Betrag darf in Raten gezahlt werden
     maxParts = 6,                    -- maximale Anzahl Raten
     daysBetweenParts = 7             -- Fälligkeit jeder weiteren Rate (Tage nach Ausstellung)
 }
@@ -99,7 +99,7 @@ Config.Installments = {
 
 Config.GroupInvoice = {
     enabled = true,
-    maxPlayers = 10
+    maxPlayers = 8
 }
 
 -------------------------------------------------------
@@ -110,13 +110,18 @@ Config.GroupInvoice = {
 Config.Insurance = {
     enabled = true,
     coveragePercent = 50,                 -- wie viel % automatisch übernommen werden
-    applicableSocieties = { 'somh' }  -- für welche Societies das gilt
+    applicableSocieties = { 'ambulance' }  -- für welche Societies das gilt
 }
 
 -- Hook: wird aufgerufen, wenn die Versicherung einen Anteil übernimmt.
--- Standard: nur Logging. An eure eigene "Versicherungskasse"/Staatskasse anbinden.
+-- Standard: nutzt esx_banking (falls installiert, siehe eigenständiges Banking-Script),
+-- sonst nur Logging.
 function Config.WithdrawFromInsurance(amount, society)
-    print(('[esx_rechnungen] Versicherung übernimmt %d$ für Society "%s" - bitte Config.WithdrawFromInsurance an eure Versicherungskasse anbinden.'):format(amount, society))
+    if GetResourceState('esx_banking') == 'started' then
+        exports['esx_banking']:WithdrawFromInsurance(amount, society)
+    else
+        print(('[esx_rechnungen] Versicherung übernimmt %d$ für Society "%s" - bitte Config.WithdrawFromInsurance an eure Versicherungskasse anbinden.'):format(amount, society))
+    end
 end
 
 -------------------------------------------------------
@@ -143,11 +148,23 @@ end
 -- Standard: versucht esx_addonaccount, sonst wird das Geld ignoriert (nur geloggt).
 -------------------------------------------------------
 
+-------------------------------------------------------
+-- Hook: wird aufgerufen, wenn eine Society-Rechnung bezahlt wird,
+-- damit ihr das Geld in euer Gesellschaftskonto einzahlen könnt.
+-- Standard: nutzt esx_banking (falls installiert, siehe eigenständiges Banking-Script:
+-- Gesellschaftskonten dort), sonst Fallback auf esx_society (auskommentiert) oder Logging.
+-------------------------------------------------------
+
 function Config.DepositToSociety(society, amount)
-    local account = exports['es_extended']:getSharedObject().GetSharedAccount and nil
-    -- Beispiel-Hook für esx_society (auskommentiert, je nach Serverstruktur anpassen):
-    exports['esx_society']:getSocietyAccount(society, function(account)
-        if account then account.addMoney(amount) end
-    end)
+    if GetResourceState('esx_banking') == 'started' then
+        exports['esx_banking']:DepositToSociety(society, amount)
+        return
+    end
+
+    -- Beispiel-Fallback für esx_society (auskommentiert, je nach Serverstruktur anpassen):
+    -- exports['esx_society']:getSocietyAccount(society, function(account)
+    --     if account then account.addMoney(amount) end
+    -- end)
+
     print(('[esx_rechnungen] %d$ sollten an Society "%s" ausgezahlt werden - bitte Config.DepositToSociety in config.lua an euer Gesellschaftssystem anbinden.'):format(amount, society))
 end

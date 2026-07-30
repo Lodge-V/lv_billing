@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Rechnungen – Vorschau</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  body { background: radial-gradient(circle at 30% 20%, #182233 0%, #05070a 70%); }
+</style>
+</head>
+<body>
+
+<div id="app" class="hidden">
+  <div class="invoice-window">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">₡</div>
+      </div>
+
+      <nav class="nav-rail">
+        <button class="nav-btn active" data-view="dashboard" title="Übersicht"><span class="nav-icon">▤</span></button>
+        <button class="nav-btn" data-view="sent" title="Gesendet"><span class="nav-icon">↗</span></button>
+        <button class="nav-btn" data-view="new" title="Neue Rechnung"><span class="nav-icon">＋</span></button>
+        <button class="nav-btn hidden-view" data-view="group" id="navGroup" title="Gruppenrechnung"><span class="nav-icon">👥</span></button>
+        <button class="nav-btn" data-view="reference" title="Referenz bezahlen"><span class="nav-icon">▦</span></button>
+        <button class="nav-btn hidden-view" data-view="inspect" id="navInspect" title="Spieler prüfen"><span class="nav-icon">◎</span></button>
+        <button class="nav-btn hidden-view" data-view="team" id="navTeam" title="Team-Dashboard"><span class="nav-icon">🏆</span></button>
+        <button class="nav-btn hidden-view" data-view="city" id="navCity" title="Stadt-Rechnungen"><span class="nav-icon">⌘</span></button>
+      </nav>
+
+      <button class="nav-btn close-btn" id="closeBtn" title="Schließen"><span class="nav-icon">✕</span></button>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+      <!-- Dashboard -->
+      <section class="view active" id="view-dashboard">
+        <div class="view-header">
+          <div>
+            <h1>Übersicht</h1>
+            <p class="subtitle">Deine erhaltenen Rechnungen</p>
+          </div>
+          <button class="btn-primary" id="payAllBtn">Alle bezahlen</button>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-card">
+            <span class="stat-label">Offen</span>
+            <span class="stat-value" id="statOpenCount">0</span>
+          </div>
+          <div class="stat-card accent">
+            <span class="stat-label">Offene Summe</span>
+            <span class="stat-value" id="statOpenSum">0$</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Bereits bezahlt</span>
+            <span class="stat-value" id="statPaidSum">0$</span>
+          </div>
+        </div>
+
+        <div class="filter-bar" data-scope="received">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="receivedList" class="invoice-list"></div>
+      </section>
+
+      <!-- Gesendet -->
+      <section class="view" id="view-sent">
+        <div class="view-header">
+          <div>
+            <h1>Gesendet</h1>
+            <p class="subtitle">Von dir ausgestellte Rechnungen</p>
+          </div>
+        </div>
+
+        <div class="filter-bar" data-scope="sent">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="sentList" class="invoice-list"></div>
+      </section>
+
+      <!-- Neue Rechnung -->
+      <section class="view" id="view-new">
+        <div class="view-header">
+          <div>
+            <h1>Neue Rechnung</h1>
+            <p class="subtitle">An einen Online-Spieler ausstellen</p>
+          </div>
+        </div>
+
+        <div class="type-toggle" id="typeToggle">
+          <button class="toggle-btn active" data-type="personal">Persönlich</button>
+          <button class="toggle-btn hidden-view" data-type="society" id="toggleSociety">Gesellschaft</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Spieler</label>
+            <select id="targetSelect"></select>
+          </div>
+        </div>
+
+        <div class="items-section">
+          <div class="items-header">
+            <label>Positionen</label>
+            <div class="items-header-actions">
+              <select class="hidden-view" id="presetAddSelect">
+                <option value="">Vorlage hinzufügen...</option>
+              </select>
+              <button class="btn-secondary small" id="addItemBtn">+ Position</button>
+            </div>
+          </div>
+          <div id="itemsContainer"></div>
+          <div class="items-total">
+            <span>Gesamtsumme</span>
+            <span id="itemsTotal">0$</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Notiz (optional)</label>
+            <textarea id="notesInput" placeholder="Zusätzliche Informationen..."></textarea>
+          </div>
+        </div>
+
+        <div class="installment-box hidden-view" id="installmentBox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="installmentToggle">
+            <span>Als Ratenzahlung anbieten</span>
+          </label>
+          <div class="installment-parts hidden-view" id="installmentPartsField">
+            <label>Anzahl Raten</label>
+            <select id="installmentPartsSelect"></select>
+          </div>
+        </div>
+
+        <button class="btn-primary full" id="sendInvoiceBtn">Rechnung senden</button>
+      </section>
+
+      <!-- Gruppenrechnung -->
+      <section class="view" id="view-group">
+        <div class="view-header">
+          <div>
+            <h1>Gruppenrechnung</h1>
+            <p class="subtitle">Betrag gleichmäßig auf mehrere Spieler aufteilen</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field"><label>Grund</label><input type="text" id="groupItemInput" placeholder="z.B. Restaurantrechnung"></div>
+          <div class="form-field"><label>Gesamtbetrag ($)</label><input type="number" id="groupAmountInput" min="1" placeholder="z.B. 1200"></div>
+          <div class="form-field span-2"><label>Notiz (optional)</label><textarea id="groupNotesInput" placeholder="Zusätzliche Informationen..."></textarea></div>
+        </div>
+
+        <label class="section-label">Beteiligte Spieler</label>
+        <div id="groupPlayerList" class="group-player-list"></div>
+
+        <div class="items-total">
+          <span id="groupShareLabel">Anteil pro Person</span>
+          <span id="groupShareValue">0$</span>
+        </div>
+
+        <button class="btn-primary full" id="sendGroupBtn">Gruppenrechnung senden</button>
+      </section>
+
+      <!-- Referenz bezahlen -->
+      <section class="view" id="view-reference">
+        <div class="view-header">
+          <div>
+            <h1>Referenz bezahlen</h1>
+            <p class="subtitle">Begleiche die Rechnung eines anderen Spielers per Code</p>
+          </div>
+        </div>
+
+        <div class="reference-box">
+          <div class="ticket-stub">
+            <div class="ticket-notch left"></div>
+            <div class="ticket-notch right"></div>
+            <span class="ticket-label">REF-CODE</span>
+            <input type="text" id="refCodeInput" maxlength="6" placeholder="XXXXXX">
+          </div>
+          <button class="btn-primary" id="payReferenceBtn">Bezahlen</button>
+        </div>
+      </section>
+
+      <!-- Spieler prüfen -->
+      <section class="view" id="view-inspect">
+        <div class="view-header">
+          <div>
+            <h1>Spieler prüfen</h1>
+            <p class="subtitle">Offene Rechnungen eines Spielers einsehen</p>
+          </div>
+        </div>
+
+        <div class="inline-search">
+          <select id="inspectTargetSelect"></select>
+          <button class="btn-primary" id="inspectBtn">Prüfen</button>
+        </div>
+
+        <div id="inspectResult" class="inspect-result"></div>
+      </section>
+
+      <!-- Team-Dashboard / Leaderboard -->
+      <section class="view" id="view-team">
+        <div class="view-header">
+          <div>
+            <h1>Team-Dashboard</h1>
+            <p class="subtitle" id="teamSubtitle">Umsatz & Anzahl Rechnungen je Mitarbeiter</p>
+          </div>
+          <button class="btn-secondary" id="refreshTeamBtn">Aktualisieren</button>
+        </div>
+
+        <div class="stat-row" id="teamStatRow">
+          <div class="stat-card">
+            <span class="stat-label">Offene Rechnungen (Team)</span>
+            <span class="stat-value" id="teamOpenCount">0</span>
+          </div>
+        </div>
+
+        <div id="leaderboardList" class="leaderboard-list"></div>
+      </section>
+
+      <!-- Stadt-Rechnungen -->
+      <section class="view" id="view-city">
+        <div class="view-header">
+          <div>
+            <h1>Stadt-Rechnungen</h1>
+            <p class="subtitle">Alle Rechnungen server-weit verwalten</p>
+          </div>
+          <button class="btn-secondary" id="refreshCityBtn">Aktualisieren</button>
+        </div>
+
+        <div class="filter-bar" data-scope="city">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="cityList" class="invoice-list city"></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // Nur für die Browser-Vorschau: fängt NUI-Callback-fetch-Aufrufe ab und beantwortet sie mit Testdaten
+  window.GetParentResourceName = () => 'esx_rechnungen_preview';
+
+  const mockContext = {
+    allowPersonal: true,
+    society: { key: 'police', label: 'Los Santos Police Department', items: [
+      { label: 'Falschparken', price: 250 },
+      { label: 'Rotlichtverstoß', price: 400 },
+      { label: 'Geschwindigkeitsüberschreitung', price: 600 },
+      { label: 'Widerstand gegen Vollstreckungsbeamte', price: 1500 }
+    ]},
+    canInspect: true,
+    canManage: true,
+    installmentsEnabled: true,
+    installmentsMinAmount: 1000,
+    installmentsMaxParts: 6,
+    groupInvoiceEnabled: true,
+    groupInvoiceMaxPlayers: 8
+  };
+
+  const mockPlayers = [
+    { id: 3, name: 'Max Mustermann' },
+    { id: 7, name: 'Erika Beispiel' },
+    { id: 12, name: 'John Doe' },
+    { id: 15, name: 'Anna Schmidt' }
+  ];
+
+  const mockInvoices = {
+    received: [
+      { id: 1, ref_id: 'A7X2K9', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Rotlichtverstoß', invoice_value: 400, original_value: 400, insurance_covered: 0, is_installment: 0, status: 'open', sent_date: '2026-07-06 14:22:00' },
+      { id: 2, ref_id: 'B3M8P1', author_name: 'Dr. Sarah Klein', society_label: 'Los Santos EMS', item: 'Operation', invoice_value: 1750, original_value: 3500, insurance_covered: 1750, is_installment: 0, status: 'open', sent_date: '2026-07-05 09:10:00' },
+      { id: 3, ref_id: 'C9Q4R2', author_name: 'Bennys Werkstatt', society_label: 'Bennys Werkstatt', item: 'Tuning', invoice_value: 2000, original_value: 2000, insurance_covered: 0, is_installment: 1, installment_count: 4, status: 'open', sent_date: '2026-07-01 18:44:00' },
+      { id: 4, ref_id: 'D1T6Y7', author_name: 'John Doe', society_label: null, item: 'Rückzahlung Darlehen', invoice_value: 2000, original_value: 2000, insurance_covered: 0, is_installment: 0, status: 'autopaid', sent_date: '2026-06-28 12:00:00' },
+      { id: 13, ref_id: 'Q1W2E3', author_name: 'Max Mustermann', society_label: null, item: 'Restaurantrechnung (Anteil an Gruppenrechnung, 4 Personen)', invoice_value: 300, original_value: 300, insurance_covered: 0, is_installment: 0, status: 'paid', sent_date: '2026-06-25 20:00:00' }
+    ],
+    sent: [
+      { id: 5, ref_id: 'E5U3I8', receiver_name: 'John Doe', society_label: null, item: 'Mietschulden Juni', invoice_value: 3000, original_value: 3000, insurance_covered: 0, is_installment: 0, status: 'open', sent_date: '2026-07-07 11:05:00' },
+      { id: 6, ref_id: 'F2O7A4', receiver_name: 'Erika Beispiel', society_label: null, item: 'Anwaltskosten', invoice_value: 1500, original_value: 1500, insurance_covered: 0, is_installment: 0, status: 'paid', sent_date: '2026-06-30 16:20:00' }
+    ]
+  };
+
+  const mockCityInvoices = [
+    { id: 10, ref_id: 'G8H2J5', receiver_name: 'Max Mustermann', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Falschparken', invoice_value: 250, original_value: 250, insurance_covered: 0, is_installment: 0, status: 'open', sent_date: '2026-07-08 08:00:00' },
+    { id: 11, ref_id: 'K4L9M1', receiver_name: 'Erika Beispiel', author_name: 'Dr. Sarah Klein', society_label: 'Los Santos EMS', item: 'Operation', invoice_value: 1750, original_value: 3500, insurance_covered: 1750, is_installment: 0, status: 'paid', sent_date: '2026-07-06 20:15:00' },
+    { id: 12, ref_id: 'N6P2Q9', receiver_name: 'John Doe', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Waffenbesitz ohne Lizenz', invoice_value: 2500, original_value: 2500, insurance_covered: 0, is_installment: 0, status: 'cancelled', sent_date: '2026-07-04 13:40:00' }
+  ];
+
+  const mockInspectResult = {
+    name: 'John Doe',
+    count: 2,
+    total: 2650,
+    invoices: [
+      { id: 20, ref_id: 'R1S2T3', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Geschwindigkeitsüberschreitung', invoice_value: 600, is_installment: 0, insurance_covered: 0, status: 'open', sent_date: '2026-07-07 10:00:00' },
+      { id: 21, ref_id: 'U4V5W6', author_name: 'Bennys Werkstatt', society_label: 'Bennys Werkstatt', item: 'Tuning', invoice_value: 2050, is_installment: 0, insurance_covered: 0, status: 'open', sent_date: '2026-07-06 15:30:00' }
+    ]
+  };
+
+  const mockLeaderboard = {
+    society: 'Los Santos Police Department',
+    openCount: 4,
+    rows: [
+      { author_name: 'Officer Tom Bauer', invoice_count: 18, total_revenue: 12400 },
+      { author_name: 'Officer Lisa Wagner', invoice_count: 14, total_revenue: 9100 },
+      { author_name: 'Officer Kevin Neumann', invoice_count: 9, total_revenue: 5300 }
+    ]
+  };
+
+  const mockInvoiceDetail = {
+    invoice: { ref_id: 'C9Q4R2', sent_date: '2026-07-01 18:44:00', society_label: 'Bennys Werkstatt', author_name: 'Bennys Werkstatt', receiver_name: 'Max Mustermann', notes: '', invoice_value: 2000, original_value: 2000, insurance_covered: 0, installment_count: 4, item: 'Tuning' },
+    items: [{ label: 'Tuning', price: 2000 }],
+    installments: [
+      { part_number: 1, amount: 500, status: 'paid', due_date: '2026-07-08 18:44:00' },
+      { part_number: 2, amount: 500, status: 'paid', due_date: '2026-07-15 18:44:00' },
+      { part_number: 3, amount: 500, status: 'open', due_date: '2026-07-22 18:44:00' },
+      { part_number: 4, amount: 500, status: 'open', due_date: '2026-07-29 18:44:00' }
+    ]
+  };
+
+  const originalFetch = window.fetch;
+  window.fetch = function (url, options) {
+    if (typeof url === 'string' && url.includes('esx_rechnungen_preview')) {
+      let body = 'ok';
+      if (url.endsWith('getCityInvoices')) body = mockCityInvoices;
+      else if (url.endsWith('inspectPlayer')) body = mockInspectResult;
+      else if (url.endsWith('getSocietyLeaderboard')) body = mockLeaderboard;
+      else if (url.endsWith('getInvoiceDetail')) body = mockInvoiceDetail;
+      return Promise.resolve(new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }));
+    }
+    return originalFetch(url, options);
+  };
+</script>
+<script src="app.js"></script>
+<script>
+  window.addEventListener('load', () => {
+    window.postMessage({ action: 'open' }, '*');
+    window.postMessage({ action: 'setContext', data: mockContext }, '*');
+    window.postMessage({ action: 'setPlayers', data: mockPlayers }, '*');
+    window.postMessage({ action: 'setInvoices', data: mockInvoices }, '*');
+  });
+</script>
+
+
+</body>
+</html>

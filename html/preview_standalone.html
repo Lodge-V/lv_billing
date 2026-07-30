@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Rechnungen – Vorschau</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-base:        #0a0d13;
+  --bg-panel:       #12161f;
+  --bg-panel-alt:   #182030;
+  --bg-elevated:    #1d2635;
+  --glass-border:   rgba(255,255,255,0.07);
+  --cyan:           #33d6c4;
+  --cyan-dim:       #1f8f83;
+  --violet:         #8b7bf5;
+  --violet-dim:     #5d4fc4;
+  --red:            #e2574c;
+  --text-main:      #eef1f8;
+  --text-muted:     #7c86a0;
+  --shadow:         0 30px 80px rgba(0,0,0,0.6);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+.hidden-view { display: none !important; }
+
+#app {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ---------- Fenster ---------- */
+
+.invoice-window {
+  width: 900px;
+  height: 78vh;
+  max-height: 640px;
+  background: var(--bg-panel);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.invoice-window::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(600px 300px at 100% 0%, rgba(139,123,245,0.10), transparent 60%),
+    radial-gradient(500px 260px at 0% 100%, rgba(51,214,196,0.08), transparent 60%);
+  pointer-events: none;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  width: 68px;
+  background: var(--bg-base);
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0;
+  gap: 10px;
+  z-index: 1;
+}
+
+.brand-mark {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--violet), var(--cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--bg-base);
+  margin-bottom: 14px;
+}
+
+.nav-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.nav-btn {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.nav-icon { font-size: 17px; line-height: 1; }
+
+.nav-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-panel-alt);
+}
+
+.nav-btn.active {
+  color: var(--bg-base);
+  background: linear-gradient(135deg, var(--violet), var(--cyan));
+  border-color: transparent;
+}
+
+.close-btn { color: var(--red); }
+.close-btn:hover { background: rgba(226,87,76,0.12); }
+
+/* ---------- Main ---------- */
+
+.main {
+  flex: 1;
+  padding: 26px 30px;
+  overflow-y: auto;
+  z-index: 1;
+}
+
+.main::-webkit-scrollbar { width: 6px; }
+.main::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+.view-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.view-header h1 {
+  font-family: 'Sora', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.3px;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--violet), var(--cyan));
+  color: var(--bg-base);
+  border: none;
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary.full { width: 100%; margin-top: 18px; padding: 13px; }
+
+.btn-secondary {
+  background: var(--bg-panel-alt);
+  color: var(--text-main);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-secondary:hover { border-color: var(--cyan-dim); }
+
+/* ---------- Stat Cards ---------- */
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.stat-card {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-card.accent {
+  border-color: rgba(51,214,196,0.35);
+  background: linear-gradient(160deg, rgba(51,214,196,0.10), var(--bg-panel-alt));
+}
+
+.stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* ---------- Rechnungsliste ---------- */
+
+.invoice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 50px 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.invoice-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 13px 16px;
+}
+
+.status-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--cyan);
+}
+.status-dot.paid, .status-dot.autopaid { background: var(--cyan); }
+.status-dot.open { background: var(--violet); }
+.status-dot.cancelled { background: var(--red); }
+
+.invoice-info { min-width: 0; }
+
+.invoice-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.invoice-party {
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+  color: var(--violet);
+  background: rgba(139,123,245,0.12);
+  border: 1px solid rgba(139,123,245,0.25);
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.invoice-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  gap: 10px;
+}
+
+.ref-chip {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cyan-dim);
+}
+
+.invoice-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.invoice-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.mini-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.mini-btn.pay { color: var(--cyan); border-color: rgba(51,214,196,0.3); }
+.mini-btn.pay:hover { background: rgba(51,214,196,0.12); }
+.mini-btn.cancel { color: var(--red); border-color: rgba(226,87,76,0.3); }
+.mini-btn.cancel:hover { background: rgba(226,87,76,0.12); }
+
+/* ---------- Neue Rechnung ---------- */
+
+.type-toggle {
+  display: inline-flex;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggle-btn.active {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-field.span-2 { grid-column: 1 / -1; }
+
+.form-field label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.form-field select,
+.form-field input,
+.form-field textarea {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-field select:focus,
+.form-field input:focus,
+.form-field textarea:focus {
+  border-color: var(--violet-dim);
+}
+
+.form-field textarea { resize: none; height: 64px; font-family: 'Inter', sans-serif; }
+
+/* ---------- Referenz bezahlen (Signature Element) ---------- */
+
+.reference-box {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.ticket-stub {
+  position: relative;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-elevated) 0px, var(--bg-elevated) 10px,
+    var(--bg-panel-alt) 10px, var(--bg-panel-alt) 20px
+  );
+  background: var(--bg-elevated);
+  border: 1.5px dashed rgba(51,214,196,0.4);
+  border-radius: 12px;
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.ticket-notch {
+  position: absolute;
+  width: 18px; height: 18px;
+  background: var(--bg-panel);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ticket-notch.left { left: -9px; }
+.ticket-notch.right { right: -9px; }
+
+.ticket-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+}
+
+#refCodeInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  width: 100%;
+  padding: 0;
+}
+
+/* ---------- Spieler prüfen ---------- */
+
+.inline-search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.inline-search select {
+  flex: 1;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-size: 13.5px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  outline: none;
+}
+
+.inspect-summary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* ---------- Filter-Leiste ---------- */
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.filter-search {
+  flex: 1;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  outline: none;
+}
+
+.filter-status, .filter-sort {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  outline: none;
+}
+
+.filter-search:focus, .filter-status:focus, .filter-sort:focus {
+  border-color: var(--violet-dim);
+}
+
+/* ---------- Mehrfachpositionen ---------- */
+
+.items-section {
+  margin-top: 16px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.items-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.items-header-actions select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-size: 11.5px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.items-header label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.btn-secondary.small {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.item-row {
+  display: grid;
+  grid-template-columns: 1fr 110px auto;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.item-row select,
+.item-row input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.item-row .remove-item-btn {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--red);
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.item-row .remove-item-btn:hover { background: rgba(226,87,76,0.12); }
+
+.items-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px dashed var(--glass-border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+/* ---------- Ratenzahlung ---------- */
+
+.installment-box {
+  margin-top: 16px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input { accent-color: var(--violet); width: 16px; height: 16px; }
+
+.installment-parts {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.installment-parts label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.installment-parts select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.installment-progress {
+  margin-top: 10px;
+  background: var(--bg-elevated);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-panel);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0 12px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+}
+
+.installment-part-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 1px solid var(--glass-border);
+  font-size: 12.5px;
+}
+.installment-part-row:first-of-type { border-top: none; }
+
+.installment-part-row .part-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+/* ---------- Gruppenrechnung ---------- */
+
+.section-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 18px 0 10px 0;
+}
+
+.group-player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.group-player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  border-radius: 9px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.group-player-row input { accent-color: var(--violet); width: 15px; height: 15px; }
+
+/* ---------- Leaderboard ---------- */
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.leaderboard-rank {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.leaderboard-row:nth-child(1) .leaderboard-rank { color: #f5c451; }
+.leaderboard-row:nth-child(2) .leaderboard-rank { color: #c9d2e0; }
+.leaderboard-row:nth-child(3) .leaderboard-rank { color: #d3925a; }
+
+.leaderboard-name { font-size: 14px; font-weight: 600; }
+
+.leaderboard-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.leaderboard-revenue {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+/* ---------- Details / PDF Button in Zeilen ---------- */
+
+.mini-btn.details { color: var(--violet); border-color: rgba(139,123,245,0.3); }
+.mini-btn.details:hover { background: rgba(139,123,245,0.12); }
+
+.installment-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+  color: var(--cyan);
+  background: rgba(51,214,196,0.12);
+  border: 1px solid rgba(51,214,196,0.25);
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.insurance-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+  color: #5ac8fa;
+  background: rgba(90,200,250,0.12);
+  border: 1px solid rgba(90,200,250,0.25);
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+/* ---------- Scrollbar Select Dropdown Text ---------- */
+
+select option { background: var(--bg-panel-alt); color: var(--text-main); }
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  body { background: radial-gradient(circle at 30% 20%, #182233 0%, #05070a 70%); }
+</style>
+</head>
+<body>
+
+<div id="app" class="hidden">
+  <div class="invoice-window">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">₡</div>
+      </div>
+
+      <nav class="nav-rail">
+        <button class="nav-btn active" data-view="dashboard" title="Übersicht"><span class="nav-icon">▤</span></button>
+        <button class="nav-btn" data-view="sent" title="Gesendet"><span class="nav-icon">↗</span></button>
+        <button class="nav-btn" data-view="new" title="Neue Rechnung"><span class="nav-icon">＋</span></button>
+        <button class="nav-btn hidden-view" data-view="group" id="navGroup" title="Gruppenrechnung"><span class="nav-icon">👥</span></button>
+        <button class="nav-btn" data-view="reference" title="Referenz bezahlen"><span class="nav-icon">▦</span></button>
+        <button class="nav-btn hidden-view" data-view="inspect" id="navInspect" title="Spieler prüfen"><span class="nav-icon">◎</span></button>
+        <button class="nav-btn hidden-view" data-view="team" id="navTeam" title="Team-Dashboard"><span class="nav-icon">🏆</span></button>
+        <button class="nav-btn hidden-view" data-view="city" id="navCity" title="Stadt-Rechnungen"><span class="nav-icon">⌘</span></button>
+      </nav>
+
+      <button class="nav-btn close-btn" id="closeBtn" title="Schließen"><span class="nav-icon">✕</span></button>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+      <!-- Dashboard -->
+      <section class="view active" id="view-dashboard">
+        <div class="view-header">
+          <div>
+            <h1>Übersicht</h1>
+            <p class="subtitle">Deine erhaltenen Rechnungen</p>
+          </div>
+          <button class="btn-primary" id="payAllBtn">Alle bezahlen</button>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-card">
+            <span class="stat-label">Offen</span>
+            <span class="stat-value" id="statOpenCount">0</span>
+          </div>
+          <div class="stat-card accent">
+            <span class="stat-label">Offene Summe</span>
+            <span class="stat-value" id="statOpenSum">0$</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Bereits bezahlt</span>
+            <span class="stat-value" id="statPaidSum">0$</span>
+          </div>
+        </div>
+
+        <div class="filter-bar" data-scope="received">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="receivedList" class="invoice-list"></div>
+      </section>
+
+      <!-- Gesendet -->
+      <section class="view" id="view-sent">
+        <div class="view-header">
+          <div>
+            <h1>Gesendet</h1>
+            <p class="subtitle">Von dir ausgestellte Rechnungen</p>
+          </div>
+        </div>
+
+        <div class="filter-bar" data-scope="sent">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="sentList" class="invoice-list"></div>
+      </section>
+
+      <!-- Neue Rechnung -->
+      <section class="view" id="view-new">
+        <div class="view-header">
+          <div>
+            <h1>Neue Rechnung</h1>
+            <p class="subtitle">An einen Online-Spieler ausstellen</p>
+          </div>
+        </div>
+
+        <div class="type-toggle" id="typeToggle">
+          <button class="toggle-btn active" data-type="personal">Persönlich</button>
+          <button class="toggle-btn hidden-view" data-type="society" id="toggleSociety">Gesellschaft</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Spieler</label>
+            <select id="targetSelect"></select>
+          </div>
+        </div>
+
+        <div class="items-section">
+          <div class="items-header">
+            <label>Positionen</label>
+            <div class="items-header-actions">
+              <select class="hidden-view" id="presetAddSelect">
+                <option value="">Vorlage hinzufügen...</option>
+              </select>
+              <button class="btn-secondary small" id="addItemBtn">+ Position</button>
+            </div>
+          </div>
+          <div id="itemsContainer"></div>
+          <div class="items-total">
+            <span>Gesamtsumme</span>
+            <span id="itemsTotal">0$</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Notiz (optional)</label>
+            <textarea id="notesInput" placeholder="Zusätzliche Informationen..."></textarea>
+          </div>
+        </div>
+
+        <div class="installment-box hidden-view" id="installmentBox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="installmentToggle">
+            <span>Als Ratenzahlung anbieten</span>
+          </label>
+          <div class="installment-parts hidden-view" id="installmentPartsField">
+            <label>Anzahl Raten</label>
+            <select id="installmentPartsSelect"></select>
+          </div>
+        </div>
+
+        <button class="btn-primary full" id="sendInvoiceBtn">Rechnung senden</button>
+      </section>
+
+      <!-- Gruppenrechnung -->
+      <section class="view" id="view-group">
+        <div class="view-header">
+          <div>
+            <h1>Gruppenrechnung</h1>
+            <p class="subtitle">Betrag gleichmäßig auf mehrere Spieler aufteilen</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field"><label>Grund</label><input type="text" id="groupItemInput" placeholder="z.B. Restaurantrechnung"></div>
+          <div class="form-field"><label>Gesamtbetrag ($)</label><input type="number" id="groupAmountInput" min="1" placeholder="z.B. 1200"></div>
+          <div class="form-field span-2"><label>Notiz (optional)</label><textarea id="groupNotesInput" placeholder="Zusätzliche Informationen..."></textarea></div>
+        </div>
+
+        <label class="section-label">Beteiligte Spieler</label>
+        <div id="groupPlayerList" class="group-player-list"></div>
+
+        <div class="items-total">
+          <span id="groupShareLabel">Anteil pro Person</span>
+          <span id="groupShareValue">0$</span>
+        </div>
+
+        <button class="btn-primary full" id="sendGroupBtn">Gruppenrechnung senden</button>
+      </section>
+
+      <!-- Referenz bezahlen -->
+      <section class="view" id="view-reference">
+        <div class="view-header">
+          <div>
+            <h1>Referenz bezahlen</h1>
+            <p class="subtitle">Begleiche die Rechnung eines anderen Spielers per Code</p>
+          </div>
+        </div>
+
+        <div class="reference-box">
+          <div class="ticket-stub">
+            <div class="ticket-notch left"></div>
+            <div class="ticket-notch right"></div>
+            <span class="ticket-label">REF-CODE</span>
+            <input type="text" id="refCodeInput" maxlength="6" placeholder="XXXXXX">
+          </div>
+          <button class="btn-primary" id="payReferenceBtn">Bezahlen</button>
+        </div>
+      </section>
+
+      <!-- Spieler prüfen -->
+      <section class="view" id="view-inspect">
+        <div class="view-header">
+          <div>
+            <h1>Spieler prüfen</h1>
+            <p class="subtitle">Offene Rechnungen eines Spielers einsehen</p>
+          </div>
+        </div>
+
+        <div class="inline-search">
+          <select id="inspectTargetSelect"></select>
+          <button class="btn-primary" id="inspectBtn">Prüfen</button>
+        </div>
+
+        <div id="inspectResult" class="inspect-result"></div>
+      </section>
+
+      <!-- Team-Dashboard / Leaderboard -->
+      <section class="view" id="view-team">
+        <div class="view-header">
+          <div>
+            <h1>Team-Dashboard</h1>
+            <p class="subtitle" id="teamSubtitle">Umsatz & Anzahl Rechnungen je Mitarbeiter</p>
+          </div>
+          <button class="btn-secondary" id="refreshTeamBtn">Aktualisieren</button>
+        </div>
+
+        <div class="stat-row" id="teamStatRow">
+          <div class="stat-card">
+            <span class="stat-label">Offene Rechnungen (Team)</span>
+            <span class="stat-value" id="teamOpenCount">0</span>
+          </div>
+        </div>
+
+        <div id="leaderboardList" class="leaderboard-list"></div>
+      </section>
+
+      <!-- Stadt-Rechnungen -->
+      <section class="view" id="view-city">
+        <div class="view-header">
+          <div>
+            <h1>Stadt-Rechnungen</h1>
+            <p class="subtitle">Alle Rechnungen server-weit verwalten</p>
+          </div>
+          <button class="btn-secondary" id="refreshCityBtn">Aktualisieren</button>
+        </div>
+
+        <div class="filter-bar" data-scope="city">
+          <input type="text" class="filter-search" placeholder="Suche nach Grund, Name, Referenz...">
+          <select class="filter-status">
+            <option value="all">Alle Status</option>
+            <option value="open">Offen</option>
+            <option value="paid">Bezahlt</option>
+            <option value="autopaid">Automatisch bezahlt</option>
+            <option value="cancelled">Storniert</option>
+          </select>
+          <select class="filter-sort">
+            <option value="date_desc">Neueste zuerst</option>
+            <option value="date_asc">Älteste zuerst</option>
+            <option value="amount_desc">Betrag ↓</option>
+            <option value="amount_asc">Betrag ↑</option>
+          </select>
+        </div>
+
+        <div id="cityList" class="invoice-list city"></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+  // Nur für die Browser-Vorschau: fängt NUI-Callback-fetch-Aufrufe ab und beantwortet sie mit Testdaten
+  window.GetParentResourceName = () => 'esx_rechnungen_preview';
+
+  const mockContext = {
+    allowPersonal: true,
+    society: { key: 'police', label: 'Los Santos Police Department', items: [
+      { label: 'Falschparken', price: 250 },
+      { label: 'Rotlichtverstoß', price: 400 },
+      { label: 'Geschwindigkeitsüberschreitung', price: 600 },
+      { label: 'Widerstand gegen Vollstreckungsbeamte', price: 1500 }
+    ]},
+    canInspect: true,
+    canManage: true,
+    installmentsEnabled: true,
+    installmentsMinAmount: 1000,
+    installmentsMaxParts: 6,
+    groupInvoiceEnabled: true,
+    groupInvoiceMaxPlayers: 8
+  };
+
+  const mockPlayers = [
+    { id: 3, name: 'Max Mustermann' },
+    { id: 7, name: 'Erika Beispiel' },
+    { id: 12, name: 'John Doe' },
+    { id: 15, name: 'Anna Schmidt' }
+  ];
+
+  const mockInvoices = {
+    received: [
+      { id: 1, ref_id: 'A7X2K9', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Rotlichtverstoß', invoice_value: 400, original_value: 400, insurance_covered: 0, is_installment: 0, status: 'open', sent_date: '2026-07-06 14:22:00' },
+      { id: 2, ref_id: 'B3M8P1', author_name: 'Dr. Sarah Klein', society_label: 'Los Santos EMS', item: 'Operation', invoice_value: 1750, original_value: 3500, insurance_covered: 1750, is_installment: 0, status: 'open', sent_date: '2026-07-05 09:10:00' },
+      { id: 3, ref_id: 'C9Q4R2', author_name: 'Bennys Werkstatt', society_label: 'Bennys Werkstatt', item: 'Tuning', invoice_value: 2000, original_value: 2000, insurance_covered: 0, is_installment: 1, installment_count: 4, status: 'open', sent_date: '2026-07-01 18:44:00' },
+      { id: 4, ref_id: 'D1T6Y7', author_name: 'John Doe', society_label: null, item: 'Rückzahlung Darlehen', invoice_value: 2000, original_value: 2000, insurance_covered: 0, is_installment: 0, status: 'autopaid', sent_date: '2026-06-28 12:00:00' },
+      { id: 13, ref_id: 'Q1W2E3', author_name: 'Max Mustermann', society_label: null, item: 'Restaurantrechnung (Anteil an Gruppenrechnung, 4 Personen)', invoice_value: 300, original_value: 300, insurance_covered: 0, is_installment: 0, status: 'paid', sent_date: '2026-06-25 20:00:00' }
+    ],
+    sent: [
+      { id: 5, ref_id: 'E5U3I8', receiver_name: 'John Doe', society_label: null, item: 'Mietschulden Juni', invoice_value: 3000, original_value: 3000, insurance_covered: 0, is_installment: 0, status: 'open', sent_date: '2026-07-07 11:05:00' },
+      { id: 6, ref_id: 'F2O7A4', receiver_name: 'Erika Beispiel', society_label: null, item: 'Anwaltskosten', invoice_value: 1500, original_value: 1500, insurance_covered: 0, is_installment: 0, status: 'paid', sent_date: '2026-06-30 16:20:00' }
+    ]
+  };
+
+  const mockCityInvoices = [
+    { id: 10, ref_id: 'G8H2J5', receiver_name: 'Max Mustermann', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Falschparken', invoice_value: 250, original_value: 250, insurance_covered: 0, is_installment: 0, status: 'open', sent_date: '2026-07-08 08:00:00' },
+    { id: 11, ref_id: 'K4L9M1', receiver_name: 'Erika Beispiel', author_name: 'Dr. Sarah Klein', society_label: 'Los Santos EMS', item: 'Operation', invoice_value: 1750, original_value: 3500, insurance_covered: 1750, is_installment: 0, status: 'paid', sent_date: '2026-07-06 20:15:00' },
+    { id: 12, ref_id: 'N6P2Q9', receiver_name: 'John Doe', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Waffenbesitz ohne Lizenz', invoice_value: 2500, original_value: 2500, insurance_covered: 0, is_installment: 0, status: 'cancelled', sent_date: '2026-07-04 13:40:00' }
+  ];
+
+  const mockInspectResult = {
+    name: 'John Doe',
+    count: 2,
+    total: 2650,
+    invoices: [
+      { id: 20, ref_id: 'R1S2T3', author_name: 'Officer Tom Bauer', society_label: 'Los Santos Police Department', item: 'Geschwindigkeitsüberschreitung', invoice_value: 600, is_installment: 0, insurance_covered: 0, status: 'open', sent_date: '2026-07-07 10:00:00' },
+      { id: 21, ref_id: 'U4V5W6', author_name: 'Bennys Werkstatt', society_label: 'Bennys Werkstatt', item: 'Tuning', invoice_value: 2050, is_installment: 0, insurance_covered: 0, status: 'open', sent_date: '2026-07-06 15:30:00' }
+    ]
+  };
+
+  const mockLeaderboard = {
+    society: 'Los Santos Police Department',
+    openCount: 4,
+    rows: [
+      { author_name: 'Officer Tom Bauer', invoice_count: 18, total_revenue: 12400 },
+      { author_name: 'Officer Lisa Wagner', invoice_count: 14, total_revenue: 9100 },
+      { author_name: 'Officer Kevin Neumann', invoice_count: 9, total_revenue: 5300 }
+    ]
+  };
+
+  const mockInvoiceDetail = {
+    invoice: { ref_id: 'C9Q4R2', sent_date: '2026-07-01 18:44:00', society_label: 'Bennys Werkstatt', author_name: 'Bennys Werkstatt', receiver_name: 'Max Mustermann', notes: '', invoice_value: 2000, original_value: 2000, insurance_covered: 0, installment_count: 4, item: 'Tuning' },
+    items: [{ label: 'Tuning', price: 2000 }],
+    installments: [
+      { part_number: 1, amount: 500, status: 'paid', due_date: '2026-07-08 18:44:00' },
+      { part_number: 2, amount: 500, status: 'paid', due_date: '2026-07-15 18:44:00' },
+      { part_number: 3, amount: 500, status: 'open', due_date: '2026-07-22 18:44:00' },
+      { part_number: 4, amount: 500, status: 'open', due_date: '2026-07-29 18:44:00' }
+    ]
+  };
+
+  const originalFetch = window.fetch;
+  window.fetch = function (url, options) {
+    if (typeof url === 'string' && url.includes('esx_rechnungen_preview')) {
+      let body = 'ok';
+      if (url.endsWith('getCityInvoices')) body = mockCityInvoices;
+      else if (url.endsWith('inspectPlayer')) body = mockInspectResult;
+      else if (url.endsWith('getSocietyLeaderboard')) body = mockLeaderboard;
+      else if (url.endsWith('getInvoiceDetail')) body = mockInvoiceDetail;
+      return Promise.resolve(new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }));
+    }
+    return originalFetch(url, options);
+  };
+</script>
+<script>
+(function () {
+  const app = document.getElementById('app');
+
+  let state = {
+    invoices: { received: [], sent: [] },
+    cityInvoices: [],
+    players: [],
+    context: null,
+    selectedType: 'personal',
+    items: [],       // { label, price } für "Neue Rechnung"
+    groupSelected: new Set()
+  };
+
+  // ----------------------------------------------------
+  // Helpers
+  // ----------------------------------------------------
+
+  function fmtMoney(amount) {
+    return Number(amount).toLocaleString('de-DE') + '$';
+  }
+
+  function fmtDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+           ' · ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function GetParentResourceName() {
+    return window.GetParentResourceName ? window.GetParentResourceName() : 'esx_rechnungen';
+  }
+
+  async function callNui(name, data) {
+    try {
+      const resp = await fetch(`https://${GetParentResourceName()}/${name}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify(data || {})
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn('NUI callback fehlgeschlagen (evtl. kein FiveM-Kontext):', name, e);
+      return null;
+    }
+  }
+
+  // ----------------------------------------------------
+  // View-Navigation
+  // ----------------------------------------------------
+
+  document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn[data-view]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
+
+      if (btn.dataset.view === 'city') loadCityInvoices();
+      if (btn.dataset.view === 'team') loadLeaderboard();
+      if (btn.dataset.view === 'group') renderGroupPlayerList();
+    });
+  });
+
+  document.getElementById('closeBtn').addEventListener('click', () => {
+    callNui('close');
+    app.classList.add('hidden');
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !app.classList.contains('hidden')) {
+      callNui('close');
+      app.classList.add('hidden');
+    }
+  });
+
+  // ----------------------------------------------------
+  // Filter / Suche / Sortierung
+  // ----------------------------------------------------
+
+  function getFilterValues(scope) {
+    const bar = document.querySelector(`.filter-bar[data-scope="${scope}"]`);
+    if (!bar) return { search: '', status: 'all', sort: 'date_desc' };
+    return {
+      search: bar.querySelector('.filter-search').value.trim().toLowerCase(),
+      status: bar.querySelector('.filter-status').value,
+      sort: bar.querySelector('.filter-sort').value
+    };
+  }
+
+  function applyFilters(list, filters, mode) {
+    let result = (list || []).slice();
+
+    if (filters.status !== 'all') {
+      result = result.filter(i => i.status === filters.status);
+    }
+
+    if (filters.search) {
+      result = result.filter(i => {
+        const haystack = [
+          i.item, i.ref_id,
+          mode === 'sent' ? i.receiver_name : (i.author_name || i.society_label),
+          i.society_label, i.notes
+        ].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(filters.search);
+      });
+    }
+
+    result.sort((a, b) => {
+      switch (filters.sort) {
+        case 'date_asc': return new Date(a.sent_date) - new Date(b.sent_date);
+        case 'amount_desc': return Number(b.invoice_value) - Number(a.invoice_value);
+        case 'amount_asc': return Number(a.invoice_value) - Number(b.invoice_value);
+        default: return new Date(b.sent_date) - new Date(a.sent_date); // date_desc
+      }
+    });
+
+    return result;
+  }
+
+  document.querySelectorAll('.filter-bar').forEach(bar => {
+    const scope = bar.dataset.scope;
+    bar.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', () => rerenderScope(scope));
+      el.addEventListener('change', () => rerenderScope(scope));
+    });
+  });
+
+  function rerenderScope(scope) {
+    if (scope === 'received') {
+      renderList(document.getElementById('receivedList'), applyFilters(state.invoices.received, getFilterValues('received'), 'received'), 'received');
+    } else if (scope === 'sent') {
+      renderList(document.getElementById('sentList'), applyFilters(state.invoices.sent, getFilterValues('sent'), 'sent'), 'sent');
+    } else if (scope === 'city') {
+      renderList(document.getElementById('cityList'), applyFilters(state.cityInvoices, getFilterValues('city'), 'city'), 'city');
+    }
+  }
+
+  // ----------------------------------------------------
+  // Rendering: Rechnungslisten
+  // ----------------------------------------------------
+
+  function renderList(container, invoices, mode) {
+    container.innerHTML = '';
+
+    if (!invoices || invoices.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = mode === 'received' ? 'Keine Rechnungen gefunden.' :
+                           mode === 'sent' ? 'Keine Rechnungen gefunden.' :
+                           'Keine Rechnungen vorhanden.';
+      container.appendChild(empty);
+      return;
+    }
+
+    invoices.forEach(inv => {
+      const row = document.createElement('div');
+      row.className = 'invoice-row';
+
+      const dot = document.createElement('div');
+      dot.className = `status-dot ${inv.status}`;
+
+      const info = document.createElement('div');
+      info.className = 'invoice-info';
+
+      const titleRow = document.createElement('div');
+      titleRow.className = 'invoice-title-row';
+
+      const party = document.createElement('span');
+      party.className = 'invoice-party';
+      party.textContent = mode === 'received' ? (inv.society_label || inv.author_name) :
+                           mode === 'sent' ? inv.receiver_name :
+                           `${inv.author_name} → ${inv.receiver_name}`;
+      titleRow.appendChild(party);
+
+      if (inv.society_label && mode !== 'received') {
+        const tag = document.createElement('span');
+        tag.className = 'invoice-tag';
+        tag.textContent = inv.society_label;
+        titleRow.appendChild(tag);
+      }
+
+      if (Number(inv.is_installment) === 1) {
+        const tag = document.createElement('span');
+        tag.className = 'installment-tag';
+        tag.textContent = `RATENZAHLUNG · ${inv.installment_count}x`;
+        titleRow.appendChild(tag);
+      }
+
+      if (Number(inv.insurance_covered) > 0) {
+        const tag = document.createElement('span');
+        tag.className = 'insurance-tag';
+        tag.textContent = `Versicherung -${fmtMoney(inv.insurance_covered)}`;
+        titleRow.appendChild(tag);
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'invoice-meta';
+      const reasonSpan = document.createElement('span');
+      reasonSpan.textContent = inv.item;
+      const refSpan = document.createElement('span');
+      refSpan.className = 'ref-chip';
+      refSpan.textContent = `#${inv.ref_id}`;
+      const dateSpan = document.createElement('span');
+      dateSpan.textContent = fmtDate(inv.sent_date);
+      meta.appendChild(reasonSpan);
+      meta.appendChild(refSpan);
+      meta.appendChild(dateSpan);
+
+      info.appendChild(titleRow);
+      info.appendChild(meta);
+
+      const amount = document.createElement('div');
+      amount.className = 'invoice-amount';
+      amount.style.color = inv.status === 'open' ? 'var(--violet)' : 'var(--cyan)';
+      amount.textContent = fmtMoney(inv.invoice_value);
+
+      const actions = document.createElement('div');
+      actions.className = 'invoice-actions';
+
+      if (mode === 'received' && inv.status === 'open') {
+        if (Number(inv.is_installment) === 1) {
+          const detailsBtn = document.createElement('button');
+          detailsBtn.className = 'mini-btn details';
+          detailsBtn.textContent = 'Raten anzeigen';
+          detailsBtn.onclick = () => toggleInstallmentDetails(row, inv.id);
+          actions.appendChild(detailsBtn);
+        } else {
+          const payBtn = document.createElement('button');
+          payBtn.className = 'mini-btn pay';
+          payBtn.textContent = 'Bezahlen';
+          payBtn.onclick = () => callNui('payInvoice', { id: inv.id }).then(refreshData);
+          actions.appendChild(payBtn);
+        }
+      }
+
+      if (mode === 'city' && inv.status === 'open') {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'mini-btn cancel';
+        cancelBtn.textContent = 'Stornieren';
+        cancelBtn.onclick = () => callNui('cancelInvoice', { id: inv.id }).then(() => loadCityInvoices());
+        actions.appendChild(cancelBtn);
+      }
+
+      const pdfBtn = document.createElement('button');
+      pdfBtn.className = 'mini-btn details';
+      pdfBtn.textContent = 'PDF';
+      pdfBtn.onclick = () => exportInvoicePDF(inv.id);
+      actions.appendChild(pdfBtn);
+
+      row.appendChild(dot);
+      row.appendChild(info);
+      row.appendChild(amount);
+      row.appendChild(actions);
+      container.appendChild(row);
+    });
+  }
+
+  // ----------------------------------------------------
+  // Ratenzahlung: Details ein-/ausklappen
+  // ----------------------------------------------------
+
+  async function toggleInstallmentDetails(row, invoiceId) {
+    const existing = row.nextElementSibling;
+    if (existing && existing.classList.contains('installment-progress')) {
+      existing.remove();
+      return;
+    }
+
+    const result = await callNui('getInvoiceDetail', { id: invoiceId });
+    if (!result) return;
+
+    const { invoice, installments } = result;
+    const paidCount = installments.filter(p => p.status === 'paid').length;
+    const percent = Math.round((paidCount / installments.length) * 100);
+
+    const panel = document.createElement('div');
+    panel.className = 'installment-progress';
+
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.fontSize = '12px';
+    header.style.color = 'var(--text-muted)';
+    header.innerHTML = `<span>${paidCount} von ${installments.length} Raten bezahlt</span><span>${percent}%</span>`;
+    panel.appendChild(header);
+
+    const track = document.createElement('div');
+    track.className = 'progress-track';
+    const fill = document.createElement('div');
+    fill.className = 'progress-fill';
+    fill.style.width = `${percent}%`;
+    track.appendChild(fill);
+    panel.appendChild(track);
+
+    installments.forEach(part => {
+      const partRow = document.createElement('div');
+      partRow.className = 'installment-part-row';
+
+      const label = document.createElement('span');
+      label.textContent = `Rate ${part.part_number}/${invoice.installment_count} · fällig ${fmtDate(part.due_date)}`;
+
+      const right = document.createElement('div');
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.style.gap = '10px';
+
+      const amountSpan = document.createElement('span');
+      amountSpan.className = 'part-amount';
+      amountSpan.textContent = fmtMoney(part.amount);
+      amountSpan.style.color = part.status === 'paid' ? 'var(--cyan)' : 'var(--violet)';
+      right.appendChild(amountSpan);
+
+      if (part.status === 'open') {
+        const payPartBtn = document.createElement('button');
+        payPartBtn.className = 'mini-btn pay';
+        payPartBtn.textContent = 'Bezahlen';
+        payPartBtn.onclick = () => callNui('payInstallment', { id: part.id }).then(() => {
+          panel.remove();
+          refreshData();
+        });
+        right.appendChild(payPartBtn);
+      } else {
+        const paidTag = document.createElement('span');
+        paidTag.className = 'invoice-tag';
+        paidTag.textContent = 'Bezahlt';
+        right.appendChild(paidTag);
+      }
+
+      partRow.appendChild(label);
+      partRow.appendChild(right);
+      panel.appendChild(partRow);
+    });
+
+    row.after(panel);
+  }
+
+  // ----------------------------------------------------
+  // Statistiken & Gesamt-Rendering
+  // ----------------------------------------------------
+
+  function renderStats() {
+    const open = state.invoices.received.filter(i => i.status === 'open');
+    const paid = state.invoices.received.filter(i => i.status === 'paid' || i.status === 'autopaid');
+    const openSum = open.reduce((s, i) => s + Number(i.invoice_value), 0);
+    const paidSum = paid.reduce((s, i) => s + Number(i.invoice_value), 0);
+
+    document.getElementById('statOpenCount').textContent = open.length;
+    document.getElementById('statOpenSum').textContent = fmtMoney(openSum);
+    document.getElementById('statPaidSum').textContent = fmtMoney(paidSum);
+  }
+
+  function renderAll() {
+    rerenderScope('received');
+    rerenderScope('sent');
+    renderStats();
+  }
+
+  function renderPlayerSelects(players) {
+    ['targetSelect', 'inspectTargetSelect'].forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '';
+      if (!players || players.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = 'Keine Spieler online';
+        opt.disabled = true;
+        select.appendChild(opt);
+        return;
+      }
+      players.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `[${p.id}] ${p.name}`;
+        select.appendChild(opt);
+      });
+    });
+
+    renderGroupPlayerList();
+  }
+
+  // ----------------------------------------------------
+  // Kontext: Rechte, Society-Zugehörigkeit, Presets
+  // ----------------------------------------------------
+
+  function applyContext(context) {
+    state.context = context;
+    if (!context) return;
+
+    document.getElementById('navInspect').classList.toggle('hidden-view', !context.canInspect);
+    document.getElementById('navCity').classList.toggle('hidden-view', !context.canManage);
+    document.getElementById('navTeam').classList.toggle('hidden-view', !context.society);
+    document.getElementById('navGroup').classList.toggle('hidden-view', !context.groupInvoiceEnabled);
+
+    const toggleSociety = document.getElementById('toggleSociety');
+    if (context.society) {
+      toggleSociety.classList.remove('hidden-view');
+      toggleSociety.textContent = context.society.label;
+    } else {
+      toggleSociety.classList.add('hidden-view');
+      state.selectedType = 'personal';
+      document.querySelector('.toggle-btn[data-type="personal"]').classList.add('active');
+      toggleSociety.classList.remove('active');
+    }
+
+    updatePresetDropdown();
+    updateInstallmentVisibility();
+  }
+
+  function updatePresetDropdown() {
+    const presetSelect = document.getElementById('presetAddSelect');
+    presetSelect.innerHTML = '<option value="">Vorlage hinzufügen...</option>';
+
+    if (state.selectedType === 'society' && state.context && state.context.society) {
+      presetSelect.classList.remove('hidden-view');
+      state.context.society.items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify(item);
+        opt.textContent = `${item.label} — ${fmtMoney(item.price)}`;
+        presetSelect.appendChild(opt);
+      });
+    } else {
+      presetSelect.classList.add('hidden-view');
+    }
+  }
+
+  presetAddSelectListener();
+  function presetAddSelectListener() {
+    document.getElementById('presetAddSelect').addEventListener('change', (e) => {
+      if (!e.target.value) return;
+      const item = JSON.parse(e.target.value);
+      addItemRow(item.label, item.price);
+      e.target.value = '';
+    });
+  }
+
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('hidden-view')) return;
+      document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.selectedType = btn.dataset.type;
+      updatePresetDropdown();
+      updateInstallmentVisibility();
+    });
+  });
+
+  // ----------------------------------------------------
+  // Mehrfachpositionen: Item-Zeilen
+  // ----------------------------------------------------
+
+  function addItemRow(label, price) {
+    const id = 'item_' + Math.random().toString(36).slice(2, 9);
+    state.items.push({ id, label: label || '', price: price || '' });
+    renderItemRows();
+  }
+
+  function removeItemRow(id) {
+    state.items = state.items.filter(i => i.id !== id);
+    if (state.items.length === 0) addItemRow();
+    renderItemRows();
+  }
+
+  function renderItemRows() {
+    const container = document.getElementById('itemsContainer');
+    container.innerHTML = '';
+
+    state.items.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.placeholder = 'Grund / Position';
+      labelInput.value = item.label;
+      labelInput.oninput = (e) => { item.label = e.target.value; };
+
+      const priceInput = document.createElement('input');
+      priceInput.type = 'number';
+      priceInput.min = '1';
+      priceInput.placeholder = '$';
+      priceInput.value = item.price;
+      priceInput.oninput = (e) => { item.price = e.target.value; updateItemsTotal(); updateInstallmentVisibility(); };
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-item-btn';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = () => removeItemRow(item.id);
+
+      row.appendChild(labelInput);
+      row.appendChild(priceInput);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    });
+
+    updateItemsTotal();
+  }
+
+  function updateItemsTotal() {
+    const total = state.items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+    document.getElementById('itemsTotal').textContent = fmtMoney(total);
+    return total;
+  }
+
+  document.getElementById('addItemBtn').addEventListener('click', () => addItemRow());
+
+  // ----------------------------------------------------
+  // Ratenzahlung im Formular
+  // ----------------------------------------------------
+
+  function updateInstallmentVisibility() {
+    const box = document.getElementById('installmentBox');
+    const cfg = state.context;
+    const total = state.items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+
+    if (!cfg || !cfg.installmentsEnabled || total < cfg.installmentsMinAmount) {
+      box.classList.add('hidden-view');
+      document.getElementById('installmentToggle').checked = false;
+      document.getElementById('installmentPartsField').classList.add('hidden-view');
+      return;
+    }
+
+    box.classList.remove('hidden-view');
+
+    const partsSelect = document.getElementById('installmentPartsSelect');
+    if (partsSelect.options.length === 0) {
+      for (let i = 2; i <= cfg.installmentsMaxParts; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${i} Raten`;
+        partsSelect.appendChild(opt);
+      }
+    }
+  }
+
+  document.getElementById('installmentToggle').addEventListener('change', (e) => {
+    document.getElementById('installmentPartsField').classList.toggle('hidden-view', !e.target.checked);
+  });
+
+  // ----------------------------------------------------
+  // Neue Rechnung senden
+  // ----------------------------------------------------
+
+  document.getElementById('sendInvoiceBtn').addEventListener('click', () => {
+    const targetId = document.getElementById('targetSelect').value;
+    const notes = document.getElementById('notesInput').value.trim();
+    const society = state.selectedType === 'society' && state.context.society ? state.context.society.key : '';
+
+    const items = state.items
+      .filter(i => i.label.trim() && Number(i.price) > 0)
+      .map(i => ({ label: i.label.trim(), price: Number(i.price) }));
+
+    if (!targetId || items.length === 0) return;
+
+    const installmentChecked = document.getElementById('installmentToggle').checked;
+    const installmentParts = installmentChecked ? document.getElementById('installmentPartsSelect').value : null;
+
+    callNui('sendInvoice', { targetId, items, society, notes, installmentParts }).then(() => {
+      state.items = [];
+      addItemRow();
+      document.getElementById('notesInput').value = '';
+      document.getElementById('installmentToggle').checked = false;
+      document.getElementById('installmentPartsField').classList.add('hidden-view');
+      refreshData();
+    });
+  });
+
+  // Startzustand: eine leere Position
+  addItemRow();
+
+  // ----------------------------------------------------
+  // Gruppenrechnung
+  // ----------------------------------------------------
+
+  function renderGroupPlayerList() {
+    const container = document.getElementById('groupPlayerList');
+    container.innerHTML = '';
+
+    if (!state.players || state.players.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Keine Spieler online.';
+      container.appendChild(empty);
+      return;
+    }
+
+    state.players.forEach(p => {
+      const row = document.createElement('label');
+      row.className = 'group-player-row';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = state.groupSelected.has(p.id);
+      checkbox.onchange = () => {
+        if (checkbox.checked) state.groupSelected.add(p.id);
+        else state.groupSelected.delete(p.id);
+        updateGroupShare();
+      };
+
+      const name = document.createElement('span');
+      name.textContent = `[${p.id}] ${p.name}`;
+
+      row.appendChild(checkbox);
+      row.appendChild(name);
+      container.appendChild(row);
+    });
+  }
+
+  function updateGroupShare() {
+    const total = Number(document.getElementById('groupAmountInput').value) || 0;
+    const count = state.groupSelected.size;
+    const share = count > 0 ? Math.floor(total / count) : 0;
+    document.getElementById('groupShareLabel').textContent = `Anteil pro Person (${count} Spieler)`;
+    document.getElementById('groupShareValue').textContent = fmtMoney(share);
+  }
+
+  document.getElementById('groupAmountInput').addEventListener('input', updateGroupShare);
+
+  document.getElementById('sendGroupBtn').addEventListener('click', () => {
+    const item = document.getElementById('groupItemInput').value.trim();
+    const amount = document.getElementById('groupAmountInput').value;
+    const notes = document.getElementById('groupNotesInput').value.trim();
+    const targetIds = Array.from(state.groupSelected);
+
+    if (!item || !amount || Number(amount) <= 0 || targetIds.length === 0) return;
+
+    callNui('sendGroupInvoice', { targetIds, amount, item, notes }).then(() => {
+      document.getElementById('groupItemInput').value = '';
+      document.getElementById('groupAmountInput').value = '';
+      document.getElementById('groupNotesInput').value = '';
+      state.groupSelected.clear();
+      renderGroupPlayerList();
+      updateGroupShare();
+      refreshData();
+    });
+  });
+
+  // ----------------------------------------------------
+  // Alle bezahlen
+  // ----------------------------------------------------
+
+  document.getElementById('payAllBtn').addEventListener('click', () => {
+    callNui('payAllInvoices').then(refreshData);
+  });
+
+  // ----------------------------------------------------
+  // Referenz bezahlen
+  // ----------------------------------------------------
+
+  document.getElementById('refCodeInput').addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  });
+
+  document.getElementById('payReferenceBtn').addEventListener('click', () => {
+    const refId = document.getElementById('refCodeInput').value.trim();
+    if (!refId) return;
+    callNui('payByReference', { refId }).then(() => {
+      document.getElementById('refCodeInput').value = '';
+      refreshData();
+    });
+  });
+
+  // ----------------------------------------------------
+  // Spieler prüfen
+  // ----------------------------------------------------
+
+  document.getElementById('inspectBtn').addEventListener('click', async () => {
+    const targetId = document.getElementById('inspectTargetSelect').value;
+    if (!targetId) return;
+
+    const result = await callNui('inspectPlayer', { targetId });
+    const container = document.getElementById('inspectResult');
+    container.innerHTML = '';
+
+    if (!result) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Keine Berechtigung oder Spieler nicht gefunden.';
+      container.appendChild(empty);
+      return;
+    }
+
+    const summary = document.createElement('div');
+    summary.className = 'inspect-summary';
+    summary.innerHTML = `
+      <div class="stat-card"><span class="stat-label">Spieler</span><span class="stat-value" style="font-size:15px;font-family:'Inter',sans-serif;">${result.name}</span></div>
+      <div class="stat-card"><span class="stat-label">Offene Rechnungen</span><span class="stat-value">${result.count}</span></div>
+      <div class="stat-card accent"><span class="stat-label">Offene Summe</span><span class="stat-value">${fmtMoney(result.total)}</span></div>
+    `;
+    container.appendChild(summary);
+
+    const list = document.createElement('div');
+    list.className = 'invoice-list';
+    container.appendChild(list);
+    renderList(list, result.invoices, 'inspect');
+  });
+
+  // ----------------------------------------------------
+  // Team-Dashboard / Leaderboard
+  // ----------------------------------------------------
+
+  async function loadLeaderboard() {
+    const result = await callNui('getSocietyLeaderboard');
+    const container = document.getElementById('leaderboardList');
+    container.innerHTML = '';
+
+    if (!result) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Keine Society-Zugehörigkeit oder keine Daten.';
+      container.appendChild(empty);
+      return;
+    }
+
+    document.getElementById('teamSubtitle').textContent = `Umsatz & Anzahl Rechnungen · ${result.society}`;
+    document.getElementById('teamOpenCount').textContent = result.openCount;
+
+    if (!result.rows || result.rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Noch keine bezahlten Rechnungen für dieses Team.';
+      container.appendChild(empty);
+      return;
+    }
+
+    result.rows.forEach((row, index) => {
+      const el = document.createElement('div');
+      el.className = 'leaderboard-row';
+      el.innerHTML = `
+        <span class="leaderboard-rank">${index + 1}</span>
+        <span class="leaderboard-name">${row.author_name}</span>
+        <span class="leaderboard-count">${row.invoice_count} Rechnungen</span>
+        <span class="leaderboard-revenue">${fmtMoney(row.total_revenue)}</span>
+      `;
+      container.appendChild(el);
+    });
+  }
+
+  document.getElementById('refreshTeamBtn').addEventListener('click', loadLeaderboard);
+
+  // ----------------------------------------------------
+  // Stadt-Rechnungen
+  // ----------------------------------------------------
+
+  async function loadCityInvoices() {
+    const result = await callNui('getCityInvoices');
+    state.cityInvoices = result || [];
+    rerenderScope('city');
+  }
+
+  document.getElementById('refreshCityBtn').addEventListener('click', loadCityInvoices);
+
+  // ----------------------------------------------------
+  // PDF-Export
+  // ----------------------------------------------------
+
+  async function exportInvoicePDF(invoiceId) {
+    const result = await callNui('getInvoiceDetail', { id: invoiceId });
+    if (!result || !window.jspdf) {
+      console.warn('PDF-Export nicht möglich (keine Daten oder jsPDF nicht geladen).');
+      return;
+    }
+
+    const { invoice, items, installments } = result;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text('Rechnung', 14, 20);
+
+    doc.setFontSize(10);
+    doc.text(`Referenz: ${invoice.ref_id}`, 14, 30);
+    doc.text(`Datum: ${fmtDate(invoice.sent_date)}`, 14, 36);
+    doc.text(`Von: ${invoice.society_label || invoice.author_name}`, 14, 44);
+    doc.text(`An: ${invoice.receiver_name}`, 14, 50);
+    if (invoice.notes) doc.text(`Notiz: ${invoice.notes}`, 14, 56);
+
+    let y = 68;
+    doc.setFontSize(11);
+    doc.text('Position', 14, y);
+    doc.text('Betrag', 170, y, { align: 'right' });
+    y += 4;
+    doc.line(14, y, 196, y);
+    y += 6;
+
+    const lineItems = (items && items.length > 0) ? items : [{ label: invoice.item, price: invoice.original_value || invoice.invoice_value }];
+    lineItems.forEach(it => {
+      doc.text(String(it.label), 14, y);
+      doc.text(fmtMoney(it.price), 170, y, { align: 'right' });
+      y += 7;
+    });
+
+    y += 2;
+    doc.line(14, y, 196, y);
+    y += 8;
+
+    if (Number(invoice.insurance_covered) > 0) {
+      doc.text('Von Versicherung übernommen:', 14, y);
+      doc.text(`-${fmtMoney(invoice.insurance_covered)}`, 170, y, { align: 'right' });
+      y += 7;
+    }
+
+    doc.setFontSize(13);
+    doc.text('Zu zahlen:', 14, y);
+    doc.text(fmtMoney(invoice.invoice_value), 170, y, { align: 'right' });
+    y += 10;
+
+    if (installments && installments.length > 0) {
+      doc.setFontSize(11);
+      doc.text('Ratenplan:', 14, y);
+      y += 6;
+      doc.setFontSize(9);
+      installments.forEach(part => {
+        doc.text(`Rate ${part.part_number}/${invoice.installment_count} · fällig ${fmtDate(part.due_date)} · ${part.status === 'paid' ? 'bezahlt' : 'offen'}`, 14, y);
+        doc.text(fmtMoney(part.amount), 170, y, { align: 'right' });
+        y += 6;
+      });
+    }
+
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text('Erstellt mit esx_rechnungen', 14, 285);
+
+    doc.save(`Rechnung_${invoice.ref_id}.pdf`);
+  }
+
+  // ----------------------------------------------------
+  // Daten laden
+  // ----------------------------------------------------
+
+  function refreshData() {
+    callNui('refreshData');
+  }
+
+  // ----------------------------------------------------
+  // Nachrichten vom Client-Lua
+  // ----------------------------------------------------
+
+  window.addEventListener('message', (event) => {
+    const { action, data } = event.data;
+
+    switch (action) {
+      case 'open':
+        app.classList.remove('hidden');
+        break;
+      case 'close':
+        app.classList.add('hidden');
+        break;
+      case 'setInvoices':
+        state.invoices = data;
+        renderAll();
+        break;
+      case 'setPlayers':
+        state.players = data;
+        renderPlayerSelects(data);
+        break;
+      case 'setContext':
+        applyContext(data);
+        break;
+    }
+  });
+})();
+
+</script>
+<script>
+  window.addEventListener('load', () => {
+    window.postMessage({ action: 'open' }, '*');
+    window.postMessage({ action: 'setContext', data: mockContext }, '*');
+    window.postMessage({ action: 'setPlayers', data: mockPlayers }, '*');
+    window.postMessage({ action: 'setInvoices', data: mockInvoices }, '*');
+  });
+</script>
+
+
+</body>
+</html>

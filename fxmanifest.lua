@@ -2,7 +2,7 @@ fx_version 'cerulean'
 game 'gta5'
 lua54 'yes'
 
-author 'Lodge V | Development'
+author 'Custom Dev'
 description 'ESX Rechnungssystem V2 - Society & Personal Billing mit NUI'
 version '2.0.0'
 
