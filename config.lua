@@ -5,7 +5,7 @@ Config = {}
 -------------------------------------------------------
 
 Config.Command      = 'rechnungen'   -- öffnet die NUI
-Config.Key           = 'F6'           -- Standard-Keybind
+Config.Key           = 'F7'           -- Standard-Keybind
 Config.PaymentAccount = 'bank'        -- 'bank' oder 'money' (Bargeld)
 
 -- Grenzen für persönliche Rechnungen
